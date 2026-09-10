@@ -564,6 +564,35 @@ async function findDataFile(){
   return (json.files && json.files[0]) ? json.files[0].id : null;
 }
 
+async function uploadPdfToDrive(file){
+  const boundary = 'archivio_schede_pdf_boundary';
+  const metadata = { name: file.name, mimeType: file.type || 'application/pdf' };
+  const preString =
+    '--' + boundary + '\r\n' +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify(metadata) + '\r\n' +
+    '--' + boundary + '\r\n' +
+    'Content-Type: ' + (file.type || 'application/pdf') + '\r\n\r\n';
+  const postString = '\r\n--' + boundary + '--';
+  const uploadBlob = new Blob([preString, file, postString]);
+
+  const res = await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+    method: 'POST',
+    headers: { 'Content-Type': 'multipart/related; boundary=' + boundary },
+    body: uploadBlob
+  });
+  const json = await res.json();
+
+  // Rende il file visibile a chiunque abbia il link (solo visualizzazione)
+  await driveFetch('https://www.googleapis.com/drive/v3/files/' + json.id + '/permissions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: 'reader', type: 'anyone' })
+  });
+
+  return json.webViewLink || ('https://drive.google.com/file/d/' + json.id + '/view');
+}
+
 async function loadFromDriveImpl(){
   setSyncStatus('Sincronizzazione con Drive...');
   try{
@@ -838,8 +867,11 @@ function openSheet(existing){
         '<textarea id="f-ingredienti" placeholder="Elenco ingredienti come riportato sul PDF">' + escapeHtml(s.ingredienti) + '</textarea>' +
       '</div>' +
       '<div class="field">' +
-        '<label>Link al PDF <span class="hint">(link di condivisione dal file su Drive)</span></label>' +
-        '<input type="url" id="f-pdf" value="' + escapeHtml(s.pdfLink) + '" placeholder="https://drive.google.com/...">' +
+        '<label>PDF scheda tecnica</label>' +
+        '<input type="file" id="f-pdf-file" accept="application/pdf">' +
+        '<div id="pdf-upload-status" style="font-size:12.5px;color:var(--ink-soft);margin-top:6px;"></div>' +
+        '<input type="hidden" id="f-pdf" value="' + escapeHtml(s.pdfLink) + '">' +
+        (s.pdfLink ? '<div style="font-size:12.5px;margin-top:6px;">PDF già collegato: <a href="' + escapeHtml(s.pdfLink) + '" target="_blank" rel="noopener">apri</a> (carica un nuovo file per sostituirlo)</div>' : '') +
       '</div>' +
       '<div id="form-error" class="error-text" style="display:none;">Nome, codice articolo e fornitore sono obbligatori.</div>' +
       '<button class="save-btn" id="saveBtn">' + (isEdit ? 'Salva modifiche' : 'Aggiungi scheda') + '</button>' +
@@ -856,6 +888,24 @@ function openSheet(existing){
 
   document.getElementById('closeSheet').onclick = () => overlay.remove();
   overlay.addEventListener('click', (e) => { if(e.target === overlay) overlay.remove(); });
+
+  document.getElementById('f-pdf-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const statusEl = document.getElementById('pdf-upload-status');
+    const saveBtn = document.getElementById('saveBtn');
+    statusEl.textContent = 'Caricamento del PDF su Drive in corso...';
+    saveBtn.disabled = true;
+    try{
+      const link = await uploadPdfToDrive(file);
+      document.getElementById('f-pdf').value = link;
+      statusEl.textContent = 'PDF caricato correttamente.';
+    }catch(err){
+      console.error(err);
+      statusEl.textContent = 'Caricamento non riuscito. Riprova.';
+    }
+    saveBtn.disabled = false;
+  });
 
   document.getElementById('saveBtn').onclick = async () => {
     const nome = document.getElementById('f-nome').value.trim();
