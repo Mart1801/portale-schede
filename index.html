@@ -268,8 +268,12 @@
   }
   .detail-actions{
     display:flex;
+    flex-wrap:wrap;
     gap:8px;
     margin-top:14px;
+  }
+  .detail-actions .btn-small{
+    flex:1 1 calc(50% - 4px);
   }
   .btn-small{
     flex:1;
@@ -440,6 +444,64 @@
     color:var(--ink-soft);
     font-size:14px;
   }
+
+  /* Scheda rapida stampabile */
+  #printArea{ display:none; }
+  .print-card{
+    max-width:600px;
+    margin:0 auto;
+    padding:24px;
+    font-family:'Inter',system-ui,sans-serif;
+    color:#111;
+  }
+  .print-card h1{
+    font-size:22px;
+    margin:0 0 6px;
+  }
+  .print-meta{
+    font-size:13px;
+    color:#444;
+    margin-bottom:20px;
+    padding-bottom:14px;
+    border-bottom:2px solid #111;
+  }
+  .print-section{
+    margin-bottom:18px;
+  }
+  .print-label{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    color:#666;
+    margin-bottom:6px;
+  }
+  .print-allergeni{
+    font-size:16px;
+    font-weight:700;
+  }
+  .print-ingredienti{
+    font-size:14px;
+    line-height:1.6;
+  }
+  .print-footer{
+    margin-top:24px;
+    padding-top:12px;
+    border-top:1px solid #ccc;
+    font-size:11px;
+    color:#777;
+  }
+
+  @media print{
+    body *{ visibility:hidden; }
+    #printArea, #printArea *{ visibility:visible; }
+    #printArea{
+      display:block;
+      position:absolute;
+      top:0;
+      left:0;
+      width:100%;
+    }
+  }
 </style>
 </head>
 <body>
@@ -478,13 +540,15 @@
   <button class="fab" id="addBtn" aria-label="Aggiungi scheda">+</button>
 </div>
 
+<div id="printArea"></div>
+
 <script>
 /* ====================================================================
    CONFIGURAZIONE — sostituisci il valore qui sotto con il tuo Client ID
    ottenuto da Google Cloud Console (vedi istruzioni fornite a parte).
    ==================================================================== */
 const CLIENT_ID = '79446707508-klffujbu3a6m8urt8dpgvclmqilpabri.apps.googleusercontent.com';
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
 const DATA_FILENAME = 'dati-schede-tecniche.json';
 
 /* ====================================================================
@@ -562,6 +626,9 @@ function signOut(){
     google.accounts.oauth2.revoke(accessToken, () => {});
   }
   accessToken = null;
+  dataFileId = null;
+  localStorage.removeItem('driveFileId');
+  schede = [];
   document.getElementById('app').style.display = 'none';
   document.getElementById('loginScreen').style.display = '';
 }
@@ -887,6 +954,32 @@ function highlightAllergensInText(text){
   });
 }
 
+function printScheda(id, evt){
+  if(evt) evt.stopPropagation();
+  const s = schede.find(x => x.id === id);
+  if(!s) return;
+
+  const dateStr = new Date().toLocaleDateString('it-IT');
+  const allergeniText = s.allergeni.length ? s.allergeni.join(', ') : 'Nessun allergene indicato';
+
+  document.getElementById('printArea').innerHTML =
+    '<div class="print-card">' +
+      '<h1>' + escapeHtml(s.nome) + '</h1>' +
+      '<div class="print-meta">Codice articolo: ' + escapeHtml(s.codice) + ' &middot; Fornitore: ' + escapeHtml(s.fornitore) + '</div>' +
+      '<div class="print-section">' +
+        '<div class="print-label">Allergeni</div>' +
+        '<div class="print-allergeni">' + escapeHtml(allergeniText) + '</div>' +
+      '</div>' +
+      '<div class="print-section">' +
+        '<div class="print-label">Ingredienti</div>' +
+        '<div class="print-ingredienti">' + highlightAllergensInText(s.ingredienti) + '</div>' +
+      '</div>' +
+      '<div class="print-footer">Scheda informativa rapida generata il ' + dateStr + '. Per la scheda tecnica completa rivolgersi al personale del punto vendita.</div>' +
+    '</div>';
+
+  window.print();
+}
+
 function matchesSearch(scheda, q){
   if(!q) return true;
   q = q.toLowerCase();
@@ -943,6 +1036,7 @@ function rowHtml(s){
       '</div>' +
       '<div class="detail-actions">' +
       (s.pdfLink ? '<a class="btn-small pdf-link" href="' + escapeHtml(s.pdfLink) + '" target="_blank" rel="noopener">Apri PDF</a>' : '') +
+      '<button class="btn-small" onclick="printScheda(\'' + s.id + '\', event)">Stampa scheda rapida</button>' +
       '<button class="btn-small" onclick="openEdit(\'' + s.id + '\', event)">Modifica</button>' +
       '<button class="btn-small danger" onclick="deleteScheda(\'' + s.id + '\', event)">Elimina</button>' +
       '</div>' +
