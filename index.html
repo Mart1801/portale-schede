@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --paper:#F2F1EA;
@@ -21,6 +22,12 @@
     --line:#D9D4C4;
     --line-strong:#B8B2A0;
     --danger:#A13A24;
+    --gluten-bg:#FBE5CB;
+    --gluten-text:#8A4B10;
+    --dairy-bg:#DCEEF5;
+    --dairy-text:#1D5C74;
+    --egg-bg:#FCF3C0;
+    --egg-text:#8A6D0A;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -230,6 +237,16 @@
     font-weight:400;
     padding-left:0;
   }
+  .chip.cat-glutine{ background:var(--gluten-bg); color:var(--gluten-text); }
+  .chip.cat-latte{ background:var(--dairy-bg); color:var(--dairy-text); }
+  .chip.cat-uova{ background:var(--egg-bg); color:var(--egg-text); }
+  .chip.cat-altro{ background:var(--rust-bg); color:var(--danger); }
+
+  .detail-text strong.hl{ font-weight:800; }
+  .detail-text strong.cat-glutine{ color:var(--gluten-text); }
+  .detail-text strong.cat-latte{ color:var(--dairy-text); }
+  .detail-text strong.cat-uova{ color:var(--egg-text); }
+  .detail-text strong.cat-altro{ color:var(--danger); }
 
   /* Detail expanded */
   .detail{
@@ -392,6 +409,9 @@
     border-color:var(--danger);
     background:var(--rust-bg);
   }
+  .allergen-item.checked[data-allergen="Glutine"]{ border-color:var(--gluten-text); background:var(--gluten-bg); }
+  .allergen-item.checked[data-allergen="Latte"]{ border-color:var(--dairy-text); background:var(--dairy-bg); }
+  .allergen-item.checked[data-allergen="Uova"]{ border-color:var(--egg-text); background:var(--egg-bg); }
   .save-btn{
     width:100%;
     padding:14px;
@@ -449,7 +469,9 @@
     <div class="backup-row">
       <button class="btn-small" id="exportBtn" type="button">Esporta backup</button>
       <button class="btn-small" id="importBtn" type="button">Importa backup</button>
+      <button class="btn-small" id="importExcelBtn" type="button">Importa da Excel</button>
       <input type="file" id="importFile" accept="application/json" style="display:none;">
+      <input type="file" id="importExcelFile" accept=".xlsx,.xls" style="display:none;">
     </div>
   </header>
   <div id="list"><div class="loading-msg">Caricamento archivio da Drive...</div></div>
@@ -732,7 +754,138 @@ function importData(file){
   reader.readAsText(file);
 }
 
-/* ---------------- Ricerca e rendering ---------------- */
+/* ---------------- Importazione da Excel (uno o piu' fogli, uno per fornitore) ---------------- */
+
+const ALLERGEN_SYNONYMS = {
+  'glutine':'Glutine', 'grano':'Glutine', 'frumento':'Glutine',
+  'crostacei':'Crostacei',
+  'uova':'Uova', 'uovo':'Uova',
+  'pesce':'Pesce',
+  'arachidi':'Arachidi',
+  'soia':'Soia',
+  'latte':'Latte', 'lattosio':'Latte', 'latticini':'Latte',
+  'frutta a guscio':'Frutta a guscio', 'frutta secca':'Frutta a guscio', 'noci':'Frutta a guscio', 'mandorle':'Frutta a guscio', 'nocciole':'Frutta a guscio',
+  'sedano':'Sedano',
+  'senape':'Senape',
+  'sesamo':'Sesamo',
+  'solfiti':'Solfiti', 'anidride solforosa':'Solfiti',
+  'lupini':'Lupini',
+  'molluschi':'Molluschi'
+};
+
+function parseAllergeniCell(raw){
+  if(!raw) return [];
+  const parts = String(raw).split(/[,;\/]/).map(p => p.trim().toLowerCase()).filter(Boolean);
+  const result = new Set();
+  parts.forEach(p => {
+    if(ALLERGEN_SYNONYMS[p]){ result.add(ALLERGEN_SYNONYMS[p]); return; }
+    for(const key in ALLERGEN_SYNONYMS){
+      if(p.includes(key)){ result.add(ALLERGEN_SYNONYMS[key]); return; }
+    }
+  });
+  return Array.from(result);
+}
+
+async function importExcel(file){
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    let added = 0, updated = 0, skipped = 0;
+    const existingByCodice = new Map(schede.map(s => [s.codice.trim().toLowerCase(), s]));
+
+    wb.SheetNames.forEach(sheetName => {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
+      rows.forEach(row => {
+        const norm = {};
+        Object.keys(row).forEach(k => {
+          const key = k.toLowerCase();
+          if(key.includes('codice')) norm.codice = String(row[k]).trim();
+          else if(key.includes('nome')) norm.nome = String(row[k]).trim();
+          else if(key.includes('fornitore')) norm.fornitore = String(row[k]).trim();
+          else if(key.includes('allergen')) norm.allergeniRaw = row[k];
+          else if(key.includes('ingredient')) norm.ingredienti = String(row[k]).trim();
+        });
+
+        if(!norm.codice || !norm.nome){ skipped++; return; }
+
+        const fornitore = norm.fornitore || sheetName;
+        const allergeni = parseAllergeniCell(norm.allergeniRaw);
+        const codeKey = norm.codice.toLowerCase();
+
+        if(existingByCodice.has(codeKey)){
+          const existing = existingByCodice.get(codeKey);
+          existing.nome = norm.nome;
+          existing.fornitore = fornitore;
+          existing.allergeni = allergeni;
+          existing.ingredienti = norm.ingredienti || '';
+          updated++;
+        } else {
+          const record = { id: uid(), nome: norm.nome, codice: norm.codice, fornitore, allergeni, ingredienti: norm.ingredienti || '', pdfLink: '' };
+          schede.push(record);
+          existingByCodice.set(codeKey, record);
+          added++;
+        }
+      });
+    });
+
+    await saveToDrive();
+    render();
+    alert('Importazione completata: ' + added + ' nuove schede, ' + updated + ' aggiornate' +
+      (skipped ? ', ' + skipped + ' righe saltate (mancava codice o nome prodotto)' : '') + '.\n\nOra apri ogni scheda per allegare il PDF corrispondente.');
+  }catch(e){
+    console.error(e);
+    alert('Non è stato possibile leggere il file. Verifica che sia un vero file Excel (.xlsx).');
+  }
+}
+
+/* ---------------- Colori per categoria allergene ed evidenziazione nel testo ---------------- */
+
+function allergenClass(name){
+  if(name === 'Glutine') return 'cat-glutine';
+  if(name === 'Latte') return 'cat-latte';
+  if(name === 'Uova') return 'cat-uova';
+  return 'cat-altro';
+}
+
+const HIGHLIGHT_TERMS = {
+  'Glutine': ['farina di grano','grano tenero','grano duro','glutine','frumento','grano','orzo','avena','segale','malto','spelta','kamut'],
+  'Crostacei': ['crostacei','gamberi','gambero','granchio','aragosta','scampi'],
+  'Uova': ['uova','uovo','ovoalbumina','albume','tuorlo'],
+  'Pesce': ['pesce','tonno','salmone','acciughe','merluzzo','aringa'],
+  'Arachidi': ['arachidi','arachide'],
+  'Soia': ['lecitina di soia','soia'],
+  'Latte': ['siero di latte','latte','lattosio','burro','panna','formaggio','caseina','caseinato'],
+  'Frutta a guscio': ['mandorle','mandorla','nocciole','nocciola','pistacchi','anacardi','noci','noce'],
+  'Sedano': ['sedano'],
+  'Senape': ['senape'],
+  'Sesamo': ['sesamo'],
+  'Solfiti': ['solfiti','anidride solforosa','metabisolfito'],
+  'Lupini': ['lupini','lupino'],
+  'Molluschi': ['molluschi','cozze','vongole','calamari','polpo','seppia']
+};
+
+function buildHighlightIndex(){
+  const entries = [];
+  Object.keys(HIGHLIGHT_TERMS).forEach(cat => {
+    HIGHLIGHT_TERMS[cat].forEach(term => entries.push({ term, cat }));
+  });
+  entries.sort((a,b) => b.term.length - a.term.length);
+  const termMap = {};
+  entries.forEach(e => { termMap[e.term.toLowerCase()] = e.cat; });
+  const pattern = entries.map(e => e.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  return { regex: new RegExp('(' + pattern + ')', 'gi'), termMap };
+}
+
+const HIGHLIGHT_INDEX = buildHighlightIndex();
+
+function highlightAllergensInText(text){
+  if(!text) return '—';
+  const escaped = escapeHtml(text);
+  return escaped.replace(HIGHLIGHT_INDEX.regex, (match) => {
+    const cat = HIGHLIGHT_INDEX.termMap[match.toLowerCase()];
+    return '<strong class="hl ' + allergenClass(cat) + '">' + match + '</strong>';
+  });
+}
 
 function matchesSearch(scheda, q){
   if(!q) return true;
@@ -778,7 +931,7 @@ function escapeHtml(str){
 function rowHtml(s){
   const isOpen = expandedId === s.id;
   const chips = s.allergeni.length
-    ? s.allergeni.map(a => '<span class="chip">' + escapeHtml(a) + '</span>').join('')
+    ? s.allergeni.map(a => '<span class="chip ' + allergenClass(a) + '">' + escapeHtml(a) + '</span>').join('')
     : '<span class="chip none">Nessun allergene indicato</span>';
 
   let detail = '';
@@ -786,7 +939,7 @@ function rowHtml(s){
     detail = '<div class="detail">' +
       '<div class="detail-section">' +
       '<div class="detail-label">Ingredienti</div>' +
-      '<div class="detail-text">' + (s.ingredienti ? escapeHtml(s.ingredienti) : '—') + '</div>' +
+      '<div class="detail-text">' + highlightAllergensInText(s.ingredienti) + '</div>' +
       '</div>' +
       '<div class="detail-actions">' +
       (s.pdfLink ? '<a class="btn-small pdf-link" href="' + escapeHtml(s.pdfLink) + '" target="_blank" rel="noopener">Apri PDF</a>' : '') +
@@ -940,6 +1093,11 @@ document.getElementById('exportBtn').addEventListener('click', exportData);
 document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
 document.getElementById('importFile').addEventListener('change', (e) => {
   if(e.target.files[0]) importData(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('importExcelBtn').addEventListener('click', () => document.getElementById('importExcelFile').click());
+document.getElementById('importExcelFile').addEventListener('change', (e) => {
+  if(e.target.files[0]) importExcel(e.target.files[0]);
   e.target.value = '';
 });
 
