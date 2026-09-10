@@ -126,6 +126,16 @@
     padding:4px 0;
     white-space:nowrap;
   }
+  .readonly-badge{
+    display:inline-block;
+    font-size:11px;
+    font-weight:700;
+    color:var(--ochre);
+    background:var(--ochre-bg);
+    padding:2px 8px;
+    border-radius:100px;
+    margin-top:4px;
+  }
   .search-row{
     display:flex;
     gap:8px;
@@ -492,14 +502,12 @@
   }
 
   @media print{
-    body *{ visibility:hidden; }
-    #printArea, #printArea *{ visibility:visible; }
+    #loginScreen{ display:none !important; }
+    #app{ display:none !important; }
     #printArea{
-      display:block;
-      position:absolute;
-      top:0;
-      left:0;
-      width:100%;
+      display:block !important;
+      position:static;
+      width:auto;
     }
   }
 </style>
@@ -520,6 +528,7 @@
       <div>
         <h1>Archivio schede tecniche</h1>
         <p class="subtitle">Allergeni e ingredienti a colpo d'occhio, senza aprire il PDF</p>
+        <span id="readOnlyBadge" class="readonly-badge" style="display:none;">Sola lettura</span>
       </div>
       <button class="signout-btn" id="signOutBtn">Esci</button>
     </div>
@@ -578,6 +587,7 @@ let expandedId = null;
 let accessToken = null;
 let dataFileId = localStorage.getItem('driveFileId') || null;
 let tokenClient = null;
+let readOnlyMode = false;
 
 function uid(){
   return 's_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
@@ -693,10 +703,20 @@ async function loadFromDriveImpl(){
       const res = await driveFetch('https://www.googleapis.com/drive/v3/files/' + dataFileId + '?alt=media');
       const text = await res.text();
       schede = text ? JSON.parse(text) : [];
+
+      // Controlla se l'utente ha permesso di modifica sul file, o solo visualizzazione
+      try{
+        const capRes = await driveFetch('https://www.googleapis.com/drive/v3/files/' + dataFileId + '?fields=capabilities');
+        const capJson = await capRes.json();
+        readOnlyMode = !(capJson.capabilities && capJson.capabilities.canEdit);
+      }catch(capErr){
+        readOnlyMode = false;
+      }
     } else {
       schede = [];
+      readOnlyMode = false;
     }
-    setSyncStatus('Sincronizzato con Drive');
+    setSyncStatus(readOnlyMode ? 'Sola lettura' : 'Sincronizzato con Drive');
   }catch(e){
     console.error(e);
     setSyncStatus('');
@@ -996,10 +1016,16 @@ function render(){
   document.getElementById('countPill').textContent =
     schede.length === 0 ? '' : (filtered.length + ' di ' + schede.length + ' schede');
 
+  document.getElementById('addBtn').style.display = readOnlyMode ? 'none' : '';
+  document.getElementById('importExcelBtn').style.display = readOnlyMode ? 'none' : '';
+  document.getElementById('importBtn').style.display = readOnlyMode ? 'none' : '';
+  const roBadge = document.getElementById('readOnlyBadge');
+  if(roBadge) roBadge.style.display = readOnlyMode ? '' : 'none';
+
   if(schede.length === 0){
     listEl.innerHTML = '<div class="empty-state">' +
       '<h2>Nessuna scheda ancora</h2>' +
-      '<p>Tocca il pulsante + per aggiungere<br>la prima scheda tecnica.</p>' +
+      '<p>' + (readOnlyMode ? 'Non ci sono ancora schede nell\'archivio.' : 'Tocca il pulsante + per aggiungere<br>la prima scheda tecnica.') + '</p>' +
       '</div>';
     return;
   }
@@ -1037,8 +1063,9 @@ function rowHtml(s){
       '<div class="detail-actions">' +
       (s.pdfLink ? '<a class="btn-small pdf-link" href="' + escapeHtml(s.pdfLink) + '" target="_blank" rel="noopener">Apri PDF</a>' : '') +
       '<button class="btn-small" onclick="printScheda(\'' + s.id + '\', event)">Stampa scheda rapida</button>' +
-      '<button class="btn-small" onclick="openEdit(\'' + s.id + '\', event)">Modifica</button>' +
-      '<button class="btn-small danger" onclick="deleteScheda(\'' + s.id + '\', event)">Elimina</button>' +
+      (readOnlyMode ? '' :
+        '<button class="btn-small" onclick="openEdit(\'' + s.id + '\', event)">Modifica</button>' +
+        '<button class="btn-small danger" onclick="deleteScheda(\'' + s.id + '\', event)">Elimina</button>') +
       '</div>' +
       '</div>';
   }
