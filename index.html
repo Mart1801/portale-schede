@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Archivio Schede Tecniche</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --paper:#F2F1EA;
+    --paper-raised:#FBFAF6;
+    --ink:#24322B;
+    --ink-soft:#5B6E4F;
+    --rust:#B0472B;
+    --rust-bg:#F5E2DA;
+    --ochre:#C9A227;
+    --ochre-bg:#F3ECD3;
+    --line:#D9D4C4;
+    --line-strong:#B8B2A0;
+    --danger:#A13A24;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  #app{
+    max-width:640px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+
+  /* Login screen */
+  #loginScreen{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:32px;
+  }
+  #loginScreen h1{
+    font-size:22px;
+    margin:0 0 8px;
+  }
+  #loginScreen p{
+    font-size:14px;
+    color:var(--ink-soft);
+    line-height:1.5;
+    max-width:320px;
+    margin:0 0 24px;
+  }
+  .google-btn{
+    padding:13px 28px;
+    border-radius:9px;
+    border:none;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:inherit;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .login-note{
+    margin-top:16px;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .login-error{
+    margin-top:14px;
+    font-size:13px;
+    color:var(--danger);
+    max-width:320px;
+  }
+
+  /* Header */
+  header{
+    padding:20px 20px 14px;
+    border-bottom:1px solid var(--line);
+    background:var(--paper);
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+  .header-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+  }
+  h1{
+    margin:0 0 2px;
+    font-size:22px;
+    font-weight:800;
+    letter-spacing:-0.01em;
+  }
+  .subtitle{
+    margin:0 0 16px;
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  .signout-btn{
+    background:none;
+    border:none;
+    font-size:12px;
+    color:var(--ink-soft);
+    text-decoration:underline;
+    cursor:pointer;
+    padding:4px 0;
+    white-space:nowrap;
+  }
+  .search-row{
+    display:flex;
+    gap:8px;
+  }
+  #search{
+    flex:1;
+    padding:11px 14px;
+    border:1px solid var(--line-strong);
+    border-radius:8px;
+    font-size:15px;
+    font-family:inherit;
+    background:var(--paper-raised);
+    color:var(--ink);
+  }
+  #search:focus{
+    outline:2px solid var(--ink-soft);
+    outline-offset:1px;
+  }
+  .count-pill{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-top:8px;
+  }
+  .sync-status{
+    font-size:11.5px;
+    color:var(--ink-soft);
+    margin-top:4px;
+    min-height:14px;
+  }
+  .backup-row{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+  }
+  .backup-row .btn-small{
+    padding:7px 0;
+    font-size:12.5px;
+  }
+
+  /* List */
+  #list{
+    flex:1;
+    padding-bottom:96px;
+  }
+  .empty-state{
+    padding:60px 24px;
+    text-align:center;
+    color:var(--ink-soft);
+  }
+  .empty-state h2{
+    font-size:17px;
+    color:var(--ink);
+    margin-bottom:6px;
+  }
+  .empty-state p{
+    font-size:14px;
+    line-height:1.5;
+    margin:0;
+  }
+
+  .row{
+    border-bottom:1px solid var(--line);
+    padding:14px 20px;
+    cursor:pointer;
+  }
+  .row:active{
+    background:var(--paper-raised);
+  }
+  .row-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:10px;
+  }
+  .prod-name{
+    font-size:16px;
+    font-weight:700;
+    line-height:1.3;
+  }
+  .prod-code{
+    font-size:12px;
+    color:var(--ink-soft);
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .prod-supplier{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+  .chip-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px;
+    margin-top:9px;
+  }
+  .chip{
+    font-size:11.5px;
+    font-weight:600;
+    padding:3px 9px;
+    border-radius:100px;
+    background:var(--rust-bg);
+    color:var(--danger);
+    line-height:1.5;
+  }
+  .chip.none{
+    background:transparent;
+    color:var(--ink-soft);
+    font-weight:400;
+    padding-left:0;
+  }
+
+  /* Detail expanded */
+  .detail{
+    padding:0 20px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  .detail-section{
+    margin-top:10px;
+  }
+  .detail-label{
+    font-size:11.5px;
+    color:var(--ink-soft);
+    margin-bottom:3px;
+  }
+  .detail-text{
+    font-size:14px;
+    line-height:1.5;
+    white-space:pre-wrap;
+  }
+  .detail-actions{
+    display:flex;
+    gap:8px;
+    margin-top:14px;
+  }
+  .btn-small{
+    flex:1;
+    padding:9px 0;
+    border-radius:7px;
+    border:1px solid var(--line-strong);
+    background:var(--paper-raised);
+    font-family:inherit;
+    font-size:13.5px;
+    font-weight:600;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .btn-small.pdf-link{
+    background:var(--ink);
+    color:var(--paper);
+    border-color:var(--ink);
+    text-decoration:none;
+    text-align:center;
+    display:block;
+  }
+  .btn-small.danger{
+    color:var(--danger);
+  }
+
+  /* Floating add button */
+  .fab{
+    position:fixed;
+    bottom:24px;
+    right:calc(50% - 320px + 24px);
+    width:56px;
+    height:56px;
+    border-radius:50%;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    font-size:28px;
+    line-height:1;
+    cursor:pointer;
+    box-shadow:0 3px 10px rgba(36,50,43,0.35);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  @media (max-width:688px){
+    .fab{ right:24px; }
+  }
+
+  /* Form sheet */
+  .sheet-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(36,50,43,0.4);
+    z-index:50;
+    display:flex;
+    align-items:flex-end;
+  }
+  .sheet{
+    background:var(--paper);
+    width:100%;
+    max-width:640px;
+    margin:0 auto;
+    max-height:92vh;
+    overflow-y:auto;
+    border-radius:16px 16px 0 0;
+    padding:20px 20px 28px;
+  }
+  .sheet-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:16px;
+  }
+  .sheet-header h2{
+    font-size:18px;
+    margin:0;
+  }
+  .close-btn{
+    background:none;
+    border:none;
+    font-size:22px;
+    color:var(--ink-soft);
+    cursor:pointer;
+    padding:4px;
+  }
+  .field{
+    margin-bottom:16px;
+  }
+  .field label{
+    display:block;
+    font-size:13px;
+    font-weight:600;
+    margin-bottom:5px;
+  }
+  .field .hint{
+    font-size:12px;
+    font-weight:400;
+    color:var(--ink-soft);
+    margin-left:4px;
+  }
+  .field input[type=text], .field input[type=url], .field textarea{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid var(--line-strong);
+    border-radius:8px;
+    font-family:inherit;
+    font-size:15px;
+    background:var(--paper-raised);
+    color:var(--ink);
+  }
+  .field textarea{
+    min-height:80px;
+    resize:vertical;
+  }
+  .allergen-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .allergen-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-size:13.5px;
+    background:var(--paper-raised);
+  }
+  .allergen-item input{
+    width:16px;
+    height:16px;
+    accent-color:var(--danger);
+    flex-shrink:0;
+  }
+  .allergen-item.checked{
+    border-color:var(--danger);
+    background:var(--rust-bg);
+  }
+  .save-btn{
+    width:100%;
+    padding:14px;
+    border-radius:9px;
+    border:none;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:inherit;
+    font-size:15.5px;
+    font-weight:700;
+    cursor:pointer;
+    margin-top:6px;
+  }
+  .save-btn:disabled{
+    opacity:0.45;
+  }
+  .error-text{
+    color:var(--danger);
+    font-size:12.5px;
+    margin-top:-10px;
+    margin-bottom:14px;
+  }
+  .loading-msg{
+    padding:40px;
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:14px;
+  }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <h1>Archivio schede tecniche</h1>
+  <p>Accedi con lo stesso account Google collegato a Drive per aprire il tuo archivio, uguale su ogni dispositivo.</p>
+  <button class="google-btn" id="signInBtn">Accedi con Google</button>
+  <div class="login-note">I dati vengono letti e scritti in un file sul tuo Drive personale.</div>
+  <div class="login-error" id="loginError" style="display:none;"></div>
+</div>
+
+<div id="app" style="display:none;">
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>Archivio schede tecniche</h1>
+        <p class="subtitle">Allergeni e ingredienti a colpo d'occhio, senza aprire il PDF</p>
+      </div>
+      <button class="signout-btn" id="signOutBtn">Esci</button>
+    </div>
+    <div class="search-row">
+      <input id="search" type="text" placeholder="Cerca per codice articolo o fornitore..." autocomplete="off">
+    </div>
+    <div class="count-pill" id="countPill"></div>
+    <div class="sync-status" id="syncStatus"></div>
+    <div class="backup-row">
+      <button class="btn-small" id="exportBtn" type="button">Esporta backup</button>
+      <button class="btn-small" id="importBtn" type="button">Importa backup</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none;">
+    </div>
+  </header>
+  <div id="list"><div class="loading-msg">Caricamento archivio da Drive...</div></div>
+  <button class="fab" id="addBtn" aria-label="Aggiungi scheda">+</button>
+</div>
+
+<script>
+/* ====================================================================
+   CONFIGURAZIONE — sostituisci il valore qui sotto con il tuo Client ID
+   ottenuto da Google Cloud Console (vedi istruzioni fornite a parte).
+   ==================================================================== */
+const CLIENT_ID = '79446707508-klffujbu3a6m8urt8dpgvclmqilpabri.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DATA_FILENAME = 'dati-schede-tecniche.json';
+
+/* ====================================================================
+   BACKEND DEI DATI — oggi 'drive', in futuro 'server'.
+   Per passare a un server/PC proprio:
+   1. Cambia STORAGE_BACKEND in 'server'
+   2. Imposta SERVER_API_BASE con l'indirizzo del tuo server
+   3. Sul server servono due endpoint JSON:
+      - GET  {SERVER_API_BASE}/schede   -> restituisce l'array delle schede
+      - PUT  {SERVER_API_BASE}/schede   -> riceve l'array delle schede (body JSON) e lo salva
+      Stesso identico formato dati usato oggi con Drive, quindi
+      il resto del portale (ricerca, form, elenco) non cambia.
+   4. Con 'server' il portale salta la schermata di accesso Google,
+      perché l'autenticazione a quel punto la gestisce il tuo server.
+   ==================================================================== */
+const STORAGE_BACKEND = 'drive'; // 'drive' oppure 'server'
+const SERVER_API_BASE = 'https://tuo-server.esempio.it/api'; // usato solo se STORAGE_BACKEND = 'server'
+
+const ALLERGENI = [
+  "Glutine","Crostacei","Uova","Pesce","Arachidi","Soia",
+  "Latte","Frutta a guscio","Sedano","Senape","Sesamo",
+  "Solfiti","Lupini","Molluschi"
+];
+
+let schede = [];
+let expandedId = null;
+let accessToken = null;
+let dataFileId = localStorage.getItem('driveFileId') || null;
+let tokenClient = null;
+
+function uid(){
+  return 's_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+}
+
+function setSyncStatus(text){
+  const el = document.getElementById('syncStatus');
+  if(el) el.textContent = text;
+}
+
+/* ---------------- Autenticazione Google ---------------- */
+
+function initGoogle(){
+  if(CLIENT_ID.startsWith('INSERISCI_QUI')){
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('loginError').textContent =
+      'Il portale non è ancora configurato: manca il Client ID di Google (vedi le istruzioni di configurazione).';
+    document.getElementById('signInBtn').disabled = true;
+    return;
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: async (resp) => {
+      if(resp.error){
+        document.getElementById('loginError').style.display = 'block';
+        document.getElementById('loginError').textContent =
+          'Accesso non riuscito o annullato. Riprova.';
+        return;
+      }
+      accessToken = resp.access_token;
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('app').style.display = '';
+      await loadFromDrive();
+    }
+  });
+}
+
+function signIn(){
+  document.getElementById('loginError').style.display = 'none';
+  tokenClient.requestAccessToken({ prompt: '' });
+}
+
+function signOut(){
+  if(accessToken){
+    google.accounts.oauth2.revoke(accessToken, () => {});
+  }
+  accessToken = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = '';
+}
+
+/* ---------------- Lettura/scrittura su Drive ---------------- */
+
+async function driveFetch(url, opts){
+  opts = opts || {};
+  opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + accessToken });
+  const res = await fetch(url, opts);
+  if(!res.ok){
+    const text = await res.text().catch(() => '');
+    throw new Error('Errore Drive ' + res.status + ': ' + text);
+  }
+  return res;
+}
+
+async function findDataFile(){
+  const q = encodeURIComponent("name='" + DATA_FILENAME + "' and trashed=false");
+  const res = await driveFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&spaces=drive&fields=files(id,name)');
+  const json = await res.json();
+  return (json.files && json.files[0]) ? json.files[0].id : null;
+}
+
+async function loadFromDriveImpl(){
+  setSyncStatus('Sincronizzazione con Drive...');
+  try{
+    if(!dataFileId){
+      dataFileId = await findDataFile();
+      if(dataFileId) localStorage.setItem('driveFileId', dataFileId);
+    }
+    if(dataFileId){
+      const res = await driveFetch('https://www.googleapis.com/drive/v3/files/' + dataFileId + '?alt=media');
+      const text = await res.text();
+      schede = text ? JSON.parse(text) : [];
+    } else {
+      schede = [];
+    }
+    setSyncStatus('Sincronizzato con Drive');
+  }catch(e){
+    console.error(e);
+    setSyncStatus('');
+    alert('Non è stato possibile caricare i dati da Drive. Controlla la connessione e riprova.');
+    schede = [];
+  }
+  render();
+}
+
+async function saveToDriveImpl(){
+  setSyncStatus('Salvataggio su Drive...');
+  const content = JSON.stringify(schede, null, 2);
+  try{
+    if(dataFileId){
+      await driveFetch('https://www.googleapis.com/upload/drive/v3/files/' + dataFileId + '?uploadType=media', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: content
+      });
+    } else {
+      const boundary = 'archivio_schede_boundary';
+      const metadata = { name: DATA_FILENAME, mimeType: 'application/json' };
+      const body =
+        '--' + boundary + '\r\n' +
+        'Content-Type: application/json\r\n\r\n' +
+        JSON.stringify(metadata) + '\r\n' +
+        '--' + boundary + '\r\n' +
+        'Content-Type: application/json\r\n\r\n' +
+        content + '\r\n' +
+        '--' + boundary + '--';
+      const res = await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'multipart/related; boundary=' + boundary },
+        body: body
+      });
+      const json = await res.json();
+      dataFileId = json.id;
+      localStorage.setItem('driveFileId', dataFileId);
+    }
+    setSyncStatus('Sincronizzato con Drive');
+  }catch(e){
+    console.error(e);
+    setSyncStatus('');
+    alert('Salvataggio su Drive non riuscito. Controlla la connessione e riprova.');
+  }
+}
+
+/* ---------------- Adattatore per un server/PC proprio (pronto, non ancora attivo) ---------------- */
+
+async function loadFromServerImpl(){
+  setSyncStatus('Sincronizzazione con il server...');
+  try{
+    const res = await fetch(SERVER_API_BASE + '/schede');
+    if(!res.ok) throw new Error('Errore server: ' + res.status);
+    schede = await res.json();
+    setSyncStatus('Sincronizzato con il server');
+  }catch(e){
+    console.error(e);
+    setSyncStatus('');
+    alert('Non è stato possibile caricare i dati dal server. Controlla la connessione e riprova.');
+    schede = [];
+  }
+  render();
+}
+
+async function saveToServerImpl(){
+  setSyncStatus('Salvataggio sul server...');
+  try{
+    const res = await fetch(SERVER_API_BASE + '/schede', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(schede)
+    });
+    if(!res.ok) throw new Error('Errore server: ' + res.status);
+    setSyncStatus('Sincronizzato con il server');
+  }catch(e){
+    console.error(e);
+    setSyncStatus('');
+    alert('Salvataggio sul server non riuscito. Controlla la connessione e riprova.');
+  }
+}
+
+/* ---------------- Punto unico di ingresso: sceglie l'adattatore attivo ---------------- */
+
+async function loadFromDrive(){
+  return STORAGE_BACKEND === 'server' ? loadFromServerImpl() : loadFromDriveImpl();
+}
+
+async function saveToDrive(){
+  return STORAGE_BACKEND === 'server' ? saveToServerImpl() : saveToDriveImpl();
+}
+
+/* ---------------- Backup manuale (indipendente da Drive) ---------------- */
+
+function exportData(){
+  const blob = new Blob([JSON.stringify(schede, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'schede-tecniche-backup.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importData(file){
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try{
+      const imported = JSON.parse(e.target.result);
+      if(!Array.isArray(imported)) throw new Error('formato non valido');
+      const existingIds = new Set(schede.map(s => s.id));
+      schede = schede.concat(imported.filter(s => !existingIds.has(s.id)));
+      await saveToDrive();
+      render();
+      alert('Importazione completata: ' + imported.length + ' schede lette.');
+    }catch(err){
+      alert('Il file scelto non è un backup valido.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ---------------- Ricerca e rendering ---------------- */
+
+function matchesSearch(scheda, q){
+  if(!q) return true;
+  q = q.toLowerCase();
+  return scheda.codice.toLowerCase().includes(q) || scheda.fornitore.toLowerCase().includes(q) || scheda.nome.toLowerCase().includes(q);
+}
+
+function render(){
+  const q = document.getElementById('search').value.trim();
+  const listEl = document.getElementById('list');
+  const filtered = schede
+    .filter(s => matchesSearch(s, q))
+    .sort((a,b) => a.nome.localeCompare(b.nome));
+
+  document.getElementById('countPill').textContent =
+    schede.length === 0 ? '' : (filtered.length + ' di ' + schede.length + ' schede');
+
+  if(schede.length === 0){
+    listEl.innerHTML = '<div class="empty-state">' +
+      '<h2>Nessuna scheda ancora</h2>' +
+      '<p>Tocca il pulsante + per aggiungere<br>la prima scheda tecnica.</p>' +
+      '</div>';
+    return;
+  }
+
+  if(filtered.length === 0){
+    listEl.innerHTML = '<div class="empty-state">' +
+      '<h2>Nessun risultato</h2>' +
+      '<p>Nessuna scheda corrisponde a "' + escapeHtml(q) + '".</p>' +
+      '</div>';
+    return;
+  }
+
+  listEl.innerHTML = filtered.map(s => rowHtml(s)).join('');
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function rowHtml(s){
+  const isOpen = expandedId === s.id;
+  const chips = s.allergeni.length
+    ? s.allergeni.map(a => '<span class="chip">' + escapeHtml(a) + '</span>').join('')
+    : '<span class="chip none">Nessun allergene indicato</span>';
+
+  let detail = '';
+  if(isOpen){
+    detail = '<div class="detail">' +
+      '<div class="detail-section">' +
+      '<div class="detail-label">Ingredienti</div>' +
+      '<div class="detail-text">' + (s.ingredienti ? escapeHtml(s.ingredienti) : '—') + '</div>' +
+      '</div>' +
+      '<div class="detail-actions">' +
+      (s.pdfLink ? '<a class="btn-small pdf-link" href="' + escapeHtml(s.pdfLink) + '" target="_blank" rel="noopener">Apri PDF</a>' : '') +
+      '<button class="btn-small" onclick="openEdit(\'' + s.id + '\', event)">Modifica</button>' +
+      '<button class="btn-small danger" onclick="deleteScheda(\'' + s.id + '\', event)">Elimina</button>' +
+      '</div>' +
+      '</div>';
+  }
+
+  return '<div class="row" onclick="toggleExpand(\'' + s.id + '\')">' +
+      '<div class="row-top">' +
+      '<span class="prod-name">' + escapeHtml(s.nome) + '</span>' +
+      '<span class="prod-code">' + escapeHtml(s.codice) + '</span>' +
+      '</div>' +
+      '<div class="prod-supplier">' + escapeHtml(s.fornitore) + '</div>' +
+      '<div class="chip-row">' + chips + '</div>' +
+      '</div>' + detail;
+}
+
+function toggleExpand(id){
+  expandedId = expandedId === id ? null : id;
+  render();
+}
+
+function deleteScheda(id, evt){
+  evt.stopPropagation();
+  if(!confirm('Eliminare questa scheda? L\'azione non si può annullare.')) return;
+  schede = schede.filter(s => s.id !== id);
+  expandedId = null;
+  saveToDrive();
+  render();
+}
+
+function openEdit(id, evt){
+  if(evt) evt.stopPropagation();
+  const s = schede.find(x => x.id === id);
+  openSheet(s);
+}
+
+/* ---------------- Form sheet ---------------- */
+
+function openSheet(existing){
+  const isEdit = !!existing;
+  const s = existing || { id: uid(), nome:'', codice:'', fornitore:'', allergeni:[], ingredienti:'', pdfLink:'' };
+
+  const overlay = document.createElement('div');
+  overlay.className = 'sheet-overlay';
+  overlay.innerHTML =
+    '<div class="sheet">' +
+      '<div class="sheet-header">' +
+        '<h2>' + (isEdit ? 'Modifica scheda' : 'Nuova scheda') + '</h2>' +
+        '<button class="close-btn" id="closeSheet">&times;</button>' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Nome prodotto</label>' +
+        '<input type="text" id="f-nome" value="' + escapeHtml(s.nome) + '" placeholder="Es. Salame Milano 500g">' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Codice articolo</label>' +
+        '<input type="text" id="f-codice" value="' + escapeHtml(s.codice) + '" placeholder="Es. ART-04521">' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Fornitore</label>' +
+        '<input type="text" id="f-fornitore" value="' + escapeHtml(s.fornitore) + '" placeholder="Es. Salumificio Rossi Srl">' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Allergeni</label>' +
+        '<div class="allergen-grid" id="allergen-grid">' +
+          ALLERGENI.map(a =>
+            '<label class="allergen-item ' + (s.allergeni.includes(a) ? 'checked' : '') + '" data-allergen="' + a + '">' +
+              '<input type="checkbox" value="' + a + '" ' + (s.allergeni.includes(a) ? 'checked' : '') + '>' +
+              a +
+            '</label>').join('') +
+        '</div>' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Ingredienti</label>' +
+        '<textarea id="f-ingredienti" placeholder="Elenco ingredienti come riportato sul PDF">' + escapeHtml(s.ingredienti) + '</textarea>' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Link al PDF <span class="hint">(link di condivisione dal file su Drive)</span></label>' +
+        '<input type="url" id="f-pdf" value="' + escapeHtml(s.pdfLink) + '" placeholder="https://drive.google.com/...">' +
+      '</div>' +
+      '<div id="form-error" class="error-text" style="display:none;">Nome, codice articolo e fornitore sono obbligatori.</div>' +
+      '<button class="save-btn" id="saveBtn">' + (isEdit ? 'Salva modifiche' : 'Aggiungi scheda') + '</button>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  overlay.querySelectorAll('.allergen-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      const checkbox = item.querySelector('input');
+      if(e.target !== checkbox){ checkbox.checked = !checkbox.checked; }
+      item.classList.toggle('checked', checkbox.checked);
+    });
+  });
+
+  document.getElementById('closeSheet').onclick = () => overlay.remove();
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) overlay.remove(); });
+
+  document.getElementById('saveBtn').onclick = async () => {
+    const nome = document.getElementById('f-nome').value.trim();
+    const codice = document.getElementById('f-codice').value.trim();
+    const fornitore = document.getElementById('f-fornitore').value.trim();
+    const ingredienti = document.getElementById('f-ingredienti').value.trim();
+    const pdfLink = document.getElementById('f-pdf').value.trim();
+    const allergeni = Array.from(overlay.querySelectorAll('#allergen-grid input:checked')).map(el => el.value);
+
+    if(!nome || !codice || !fornitore){
+      document.getElementById('form-error').style.display = 'block';
+      return;
+    }
+
+    const record = { id: s.id, nome, codice, fornitore, allergeni, ingredienti, pdfLink };
+    const idx = schede.findIndex(x => x.id === s.id);
+    if(idx >= 0){ schede[idx] = record; } else { schede.push(record); }
+
+    await saveToDrive();
+    overlay.remove();
+    render();
+  };
+}
+
+/* ---------------- Avvio ---------------- */
+
+document.getElementById('signInBtn').addEventListener('click', () => signIn());
+document.getElementById('signOutBtn').addEventListener('click', () => signOut());
+document.getElementById('addBtn').addEventListener('click', () => openSheet(null));
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('exportBtn').addEventListener('click', exportData);
+document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', (e) => {
+  if(e.target.files[0]) importData(e.target.files[0]);
+  e.target.value = '';
+});
+
+window.addEventListener('load', () => {
+  if(STORAGE_BACKEND === 'server'){
+    // Con un server proprio non serve l'accesso Google: si entra direttamente.
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = '';
+    loadFromDrive();
+    return;
+  }
+  // Attende che la libreria Google sia pronta
+  const check = setInterval(() => {
+    if(window.google && google.accounts){
+      clearInterval(check);
+      initGoogle();
+    }
+  }, 100);
+});
+</script>
+</body>
+</html>
