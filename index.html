@@ -28,6 +28,10 @@
     --dairy-text:#1D5C74;
     --egg-bg:#FCF3C0;
     --egg-text:#8A6D0A;
+    --soy-bg:#DEEBD1;
+    --soy-text:#3D6B2C;
+    --nuts-bg:#F5DCE6;
+    --nuts-text:#9C3D68;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -107,9 +111,10 @@
   }
   h1{
     margin:0 0 2px;
-    font-size:22px;
+    font-size:25px;
     font-weight:800;
-    letter-spacing:-0.01em;
+    letter-spacing:0.01em;
+    text-transform:uppercase;
   }
   .subtitle{
     margin:0 0 16px;
@@ -211,8 +216,9 @@
     gap:10px;
   }
   .prod-name{
-    font-size:16px;
+    font-size:18.5px;
     font-weight:700;
+    font-style:italic;
     line-height:1.3;
   }
   .prod-code{
@@ -250,12 +256,16 @@
   .chip.cat-glutine{ background:var(--gluten-bg); color:var(--gluten-text); }
   .chip.cat-latte{ background:var(--dairy-bg); color:var(--dairy-text); }
   .chip.cat-uova{ background:var(--egg-bg); color:var(--egg-text); }
+  .chip.cat-soia{ background:var(--soy-bg); color:var(--soy-text); }
+  .chip.cat-frutta-guscio{ background:var(--nuts-bg); color:var(--nuts-text); }
   .chip.cat-altro{ background:var(--rust-bg); color:var(--danger); }
 
   .detail-text strong.hl{ font-weight:800; }
   .detail-text strong.cat-glutine{ color:var(--gluten-text); }
   .detail-text strong.cat-latte{ color:var(--dairy-text); }
   .detail-text strong.cat-uova{ color:var(--egg-text); }
+  .detail-text strong.cat-soia{ color:var(--soy-text); }
+  .detail-text strong.cat-frutta-guscio{ color:var(--nuts-text); }
   .detail-text strong.cat-altro{ color:var(--danger); }
 
   /* Detail expanded */
@@ -426,6 +436,8 @@
   .allergen-item.checked[data-allergen="Glutine"]{ border-color:var(--gluten-text); background:var(--gluten-bg); }
   .allergen-item.checked[data-allergen="Latte"]{ border-color:var(--dairy-text); background:var(--dairy-bg); }
   .allergen-item.checked[data-allergen="Uova"]{ border-color:var(--egg-text); background:var(--egg-bg); }
+  .allergen-item.checked[data-allergen="Soia"]{ border-color:var(--soy-text); background:var(--soy-bg); }
+  .allergen-item.checked[data-allergen="Frutta a guscio"]{ border-color:var(--nuts-text); background:var(--nuts-bg); }
   .save-btn{
     width:100%;
     padding:14px;
@@ -931,6 +943,8 @@ function allergenClass(name){
   if(name === 'Glutine') return 'cat-glutine';
   if(name === 'Latte') return 'cat-latte';
   if(name === 'Uova') return 'cat-uova';
+  if(name === 'Soia') return 'cat-soia';
+  if(name === 'Frutta a guscio') return 'cat-frutta-guscio';
   return 'cat-altro';
 }
 
